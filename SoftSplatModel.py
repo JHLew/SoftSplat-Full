@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 from OpticalFlow.PWCNet import PWCNet
 from softsplat import Softsplat
-from torch.nn.functional import interpolate
-from flow import BackWarp
+from torch.nn.functional import interpolate, grid_sample
+from einops import repeat
 
 # convert [0, 1] to [-1, 1]
 def preprocess(x):
@@ -14,13 +14,45 @@ def postprocess(x):
     return torch.clamp((x + 1) / 2, 0, 1)
 
 
+class BackWarp(nn.Module):
+    def __init__(self, clip=True):
+        super(BackWarp, self).__init__()
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.clip = clip
+
+    def forward(self, img, flow):
+        b, c, h, w = img.shape
+        gridY, gridX = torch.meshgrid(torch.arange(h), torch.arange(w))
+        gridX, gridY = gridX.to(self.device), gridY.to(self.device)
+
+        u = flow[:, 0]  # W
+        v = flow[:, 1]  # H
+
+        x = repeat(gridX, 'h w -> b h w', b=b).float() + u
+        y = repeat(gridY, 'h w -> b h w', b=b).float() + v
+
+        # normalize
+        x = (x / w) * 2 - 1
+        y = (y / h) * 2 - 1
+
+        # stacking X and Y
+        grid = torch.stack((x, y), dim=-1)
+
+        # Sample pixels using bilinear interpolation.
+        if self.clip:
+            output = grid_sample(img, grid, mode='bilinear', align_corners=True, padding_mode='border')
+        else:
+            output = grid_sample(img, grid, mode='bilinear', align_corners=True)
+        return output
+
+
 class SoftSplatBaseline(nn.Module):
     def __init__(self):
         super(SoftSplatBaseline, self).__init__()
         self.flow_predictor = PWCNet()
         self.flow_predictor.load_state_dict(torch.load('./OpticalFlow/pwc-checkpoint.pt'))
         self.fwarp = Softsplat()
-        self.bwarp = BackWarp(abs_flow=True, clip=False)
+        self.bwarp = BackWarp(clip=False)
         self.feature_pyramid = nn.ModuleList([
             nn.Sequential(
                 nn.Conv2d(3, 32, 3, 1, 1),
@@ -243,3 +275,16 @@ class UpBlock(nn.Module):
     def forward(self, x):
         x = interpolate(x, scale_factor=2.0, mode='bilinear', align_corners=False)
         return self.layers(x)
+
+
+if __name__ == '__main__':
+    '''
+    Example Usage
+    '''
+    frame0frame1 = torch.randn([1, 3, 2, 448, 256]).cuda()  # batch size 1, 3 RGB channels, 2 frame input, H x W of 448 x 256
+    target_t = torch.tensor([0.5]).cuda()
+    model = SoftSplatBaseline().cuda()
+    model.load_state_dict(torch.load('./ckpt/SoftSplatBaseline_Vimeo.pth'))
+
+    with torch.no_grad():
+        output = model(frame0frame1, target_t)
