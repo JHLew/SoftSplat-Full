@@ -5,9 +5,11 @@ from softsplat import Softsplat
 from torch.nn.functional import interpolate, grid_sample
 from einops import repeat
 
+
 # convert [0, 1] to [-1, 1]
 def preprocess(x):
     return x * 2 - 1
+
 
 # convert [-1, 1] to [0, 1]
 def postprocess(x):
@@ -90,7 +92,7 @@ class SoftSplatBaseline(nn.Module):
 
         # Z importance metric
         with torch.no_grad():
-            brightness_diff = torch.sum(torch.abs(self.bwarp(torch.cat([fr1, fr0], dim=0), flow)), dim=1, keepdim=True)
+            brightness_diff = torch.sum(torch.abs(self.bwarp(torch.cat([fr1, fr0], dim=0), flow) - torch.cat([fr0, fr1], dim=0)), dim=1, keepdim=True)
         z = self.alpha * brightness_diff
 
         # warping
