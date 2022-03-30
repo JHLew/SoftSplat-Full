@@ -15,7 +15,7 @@ frame0frame1 = torch.randn([1, 3, 2, 448, 256]).cuda()  # batch size 1, 3 RGB ch
 target_t = torch.tensor([0.5]).cuda()  # target t=0.5
 
 model = SoftSplatBaseline().cuda()
-model.load_state_dict(torch.load('./SoftSplatBaseline_Vimeo.pth'))
+model.load_state_dict(torch.load('./SoftSplatBaseline_Vimeo.pth')['model'])
 
 framet = model(frame0frame1, target_t)
 ```
