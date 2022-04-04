@@ -1,9 +1,9 @@
 # SoftSplat-Full
 Full model implementation of CVPR 2020 paper, ["Softmax Splatting for Video Frame Interpolation"](https://openaccess.thecvf.com/content_CVPR_2020/papers/Niklaus_Softmax_Splatting_for_Video_Frame_Interpolation_CVPR_2020_paper.pdf)
 
-The full model's weights pretrained on Vimeo90k data can be downloaded from this [link](https://drive.google.com/file/d/1DKgZtbRmAycDDOk16IUT1NCKz_TQhcGF/view?usp=sharing).
+The full model's weights pretrained on Vimeo90k data can be downloaded from this [link](https://drive.google.com/file/d/1wtUFS68D8hVKRg-LFr7jAibg8KgvyrMZ/view?usp=sharing).
 
-My reproduced model shows a ```PSNR of 35.64``` in Vimeo90k.
+My reproduced model shows a ```PSNR of 35.59``` in Vimeo90k.
 
 Note that the original implementation of the paper is trained with the Laplacian pyramids, but I used the conventional pixel-wise L1 loss instead.
 
