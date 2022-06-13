@@ -3,7 +3,7 @@ import os
 from argparse import ArgumentParser
 import torch
 import torch.nn as nn
-from torch.optim import Adam
+from torch.optim import Adam, lr_scheduler
 from dataset import Vimeo90k
 from torch.utils.data import DataLoader
 from SoftSplatModel import SoftSplatBaseline
@@ -11,18 +11,21 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import shutil
 from validation import Vimeo_PSNR as validate
+from ReconLoss import LaplacianLoss, CensusLoss
 
 
 def train():
     parser = ArgumentParser()
     parser.add_argument('--exp_name', type=str, default='SoftSplatBaseline', help='experiment name')
     parser.add_argument('--n_epochs', type=int, default=80, help='number of epochs for training')
-    parser.add_argument('--lr', type=float, default=1e-4, help='batch size for validation')
-    parser.add_argument('--batch_size', type=int, default=8, help='batch size for training')
-    parser.add_argument('--loss_type', choices=['L1', 'MSE'], default='L1', help='loss function to use')
+    parser.add_argument('--lr', type=float, default=2e-4, help='learning rate for training')
+    parser.add_argument('--lr_schedule', nargs='*', type=int, help='lr schedule - when to decay. in epoch numbers.')
+    parser.add_argument('--lr_gamma', type=float, default=0.5, help='lr schedule - how much to decay')
+    parser.add_argument('--batch_size', type=int, default=16, help='batch size for training')
+    parser.add_argument('--loss_type', choices=['L1', 'MSE', 'Laplacian', 'Census'], default='Laplacian', help='loss function to use')
     parser.add_argument('--resume', type=int, default=0, help='epoch # to start / resume from.')
     parser.add_argument('--data_path', type=str, default='/Vimeo90k', help='path to dataset (Vimeo90k)')
-    parser.add_argument('--save_dir', type=str, default='./ckpt', help='path to tensorboard log')
+    parser.add_argument('--save_dir', type=str, default='./ckpt', help='path to save checkpoint weights')
     parser.add_argument('--log_dir', type=str, default='./logs', help='path to tensorboard log')
     parser.add_argument('--val_dir', type=str, default='./valid', help='path to save validation results')
     parser.add_argument('--valid_batch_size', type=int, default=8, help='batch size for validation')
@@ -56,6 +59,10 @@ def train():
         loss_fn = nn.L1Loss()
     elif args.loss_type == 'MSE':
         loss_fn = nn.MSELoss()
+    elif args.loss_type == 'Laplacian':
+        loss_fn = LaplacianLoss()
+    elif args.loss_type == 'Census':
+        loss_fn = CensusLoss()
 
     if not args.resume == 0:  # if resume training
         print('loading checkpoints...')
@@ -70,6 +77,13 @@ def train():
             shutil.rmtree(logs)
         if os.path.exists(valid_path):
             shutil.rmtree(valid_path)
+
+    milestones = args.lr_schedule
+    if args.lr_schedule is None:
+        milestones = [args.n_epochs + 10]
+
+    scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=args.lr_gamma)
+    scheduler.last_epoch = args.resume - 1
 
     # recording & tracking
     os.makedirs(args.save_dir, exist_ok=True)
