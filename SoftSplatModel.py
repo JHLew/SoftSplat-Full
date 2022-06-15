@@ -50,7 +50,7 @@ class BackWarp(nn.Module):
 
 
 class SoftSplatBaseline(nn.Module):
-    def __init__(self):
+    def __init__(self, predefined_z=False, act=nn.PReLU):
         super(SoftSplatBaseline, self).__init__()
         self.flow_predictor = PWCNet()
         self.flow_predictor.load_state_dict(torch.load('./OpticalFlow/pwc-checkpoint.pt'))
@@ -59,25 +59,37 @@ class SoftSplatBaseline(nn.Module):
         self.feature_pyramid = nn.ModuleList([
             nn.Sequential(
                 nn.Conv2d(3, 32, 3, 1, 1),
-                nn.PReLU(),
+                act(),
                 nn.Conv2d(32, 32, 3, 1, 1),
-                nn.PReLU()
+                act()
             ),
             nn.Sequential(
                 nn.Conv2d(32, 64, 3, 2, 1),
-                nn.PReLU(),
+                act(),
                 nn.Conv2d(64, 64, 3, 1, 1),
-                nn.PReLU()
+                act()
             ),
             nn.Sequential(
                 nn.Conv2d(64, 96, 3, 2, 1),
-                nn.PReLU(),
+                act(),
                 nn.Conv2d(96, 96, 3, 1, 1),
-                nn.PReLU()
+                act()
             ),
         ])
-        self.synth_net = GridNet(dim=32, act=nn.PReLU)
-        self.alpha = nn.Parameter(torch.randn(1))
+        self.synth_net = GridNet(dim=32, act=act)
+        self.predefined_z = predefined_z
+        if predefined_z:
+            self.alpha = nn.Parameter(-torch.ones(1))
+        else:
+            self.v_net = nn.Sequential(
+                nn.Conv2d(3, 32, 3, 1, 1),
+                act(),
+                nn.Conv2d(32, 32, 3, 1, 1),
+                act(),
+                nn.Conv2d(32, 32, 3, 1, 1),
+                act(),
+                nn.Conv2d(32, 1, 3, 1, 1)
+            )
 
     def forward(self, x, target_t):
         x = preprocess(x)
@@ -92,9 +104,11 @@ class SoftSplatBaseline(nn.Module):
             pyramid.append(f_lv)
 
         # Z importance metric
-        with torch.no_grad():
-            brightness_diff = torch.sum(torch.abs(self.bwarp(torch.cat([fr1, fr0], dim=0), flow) - torch.cat([fr0, fr1], dim=0)), dim=1, keepdim=True)
-        z = self.alpha * brightness_diff
+        brightness_diff = torch.abs(self.bwarp(torch.cat([fr1, fr0], dim=0), flow) - torch.cat([fr0, fr1], dim=0))
+        if self.predefined_z:
+            z = self.alpha * torch.sum(brightness_diff, dim=1, keepdim=True)
+        else:
+            z = self.v_net(brightness_diff)
 
         # warping
         n_lv = len(pyramid)

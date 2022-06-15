@@ -28,7 +28,7 @@ def train():
     parser.add_argument('--save_dir', type=str, default='./ckpt', help='path to save checkpoint weights')
     parser.add_argument('--log_dir', type=str, default='./logs', help='path to tensorboard log')
     parser.add_argument('--val_dir', type=str, default='./valid', help='path to save validation results')
-    parser.add_argument('--valid_batch_size', type=int, default=8, help='batch size for validation')
+    parser.add_argument('--valid_batch_size', type=int, default=16, help='batch size for validation')
     args = parser.parse_args()
     print(args)
 
