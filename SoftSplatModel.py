@@ -82,13 +82,11 @@ class SoftSplatBaseline(nn.Module):
             self.alpha = nn.Parameter(-torch.ones(1))
         else:
             self.v_net = nn.Sequential(
-                nn.Conv2d(6, 32, 3, 1, 1),
+                nn.Conv2d(6, 64, 3, 1, 1),
                 act(),
-                nn.Conv2d(32, 32, 3, 1, 1),
+                nn.Conv2d(64, 64, 3, 1, 1),
                 act(),
-                nn.Conv2d(32, 32, 3, 1, 1),
-                act(),
-                nn.Conv2d(32, 1, 3, 1, 1)
+                nn.Conv2d(64, 1, 3, 1, 1)
             )
 
     def forward(self, x, target_t):
