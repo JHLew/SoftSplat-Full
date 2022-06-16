@@ -82,7 +82,7 @@ class SoftSplatBaseline(nn.Module):
             self.alpha = nn.Parameter(-torch.ones(1))
         else:
             self.v_net = nn.Sequential(
-                nn.Conv2d(3, 32, 3, 1, 1),
+                nn.Conv2d(6, 32, 3, 1, 1),
                 act(),
                 nn.Conv2d(32, 32, 3, 1, 1),
                 act(),
@@ -108,7 +108,7 @@ class SoftSplatBaseline(nn.Module):
         if self.predefined_z:
             z = self.alpha * torch.sum(brightness_diff, dim=1, keepdim=True)
         else:
-            z = self.v_net(brightness_diff)
+            z = self.v_net(torch.cat([torch.cat([fr0, fr1]), -brightness_diff], dim=1))
 
         # warping
         n_lv = len(pyramid)
