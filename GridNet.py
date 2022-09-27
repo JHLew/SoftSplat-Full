@@ -67,7 +67,12 @@ class GridNet(nn.Module):
     def forward(self, pyramid):
         x_orig, x_0_0, x_1_0, x_2_0 = pyramid
 
-        # compress dim 32 x 2 -> 32
+        '''
+        compress dim first. (32 x 2 -> 32)
+        this channel reduction / compression process is not explicitly mentioned in the Softsplat paper,
+        but only says it adopted the GridNet of CtxSyn, which has a dimension of 32, 64, 96 at the three levels.
+        Thus this dimension compression part may be different from the original implementation.
+        '''
         x_0_0 = torch.cat([x_orig, x_0_0], dim=1)
         x_0_0 = self.compress[0](x_0_0)
         x_1_0 = self.compress[1](x_1_0)

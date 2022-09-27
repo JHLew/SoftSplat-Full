@@ -90,11 +90,10 @@ class SoftSplatBaseline(nn.Module):
             )
 
     def forward(self, x, target_t):
-        x = preprocess(x)
-        b = x.shape[0]
         target_t = target_t.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
         fr0, fr1 = x[:, :, 0], x[:, :, 1]
         flow = self.flow_predictor(torch.cat([fr0, fr1], dim=0), torch.cat([fr1, fr0], dim=0))
+        fr0, fr1 = preprocess(fr0), preprocess(fr1)
         f_lv = torch.cat([fr0, fr1], dim=0)
         pyramid = [f_lv]
         for feat_extractor_lv in self.feature_pyramid:
@@ -115,7 +114,7 @@ class SoftSplatBaseline(nn.Module):
             f_lv = pyramid[lv]
             scale_factor = f_lv.shape[-1] / flow.shape[-1]
             flow_lv = interpolate(flow, scale_factor=scale_factor, mode='bilinear', align_corners=False) * scale_factor
-            flow01, flow10 = torch.split(flow_lv, b, dim=0)
+            flow01, flow10 = flow_lv.chunk(2, dim=0)
             flow0t, flow1t = flow01 * target_t, flow10 * (1 - target_t)
             flowt = torch.cat([flow0t, flow1t], dim=0)
             z_lv = interpolate(z, scale_factor=scale_factor, mode='bilinear', align_corners=False)

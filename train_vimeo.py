@@ -115,11 +115,10 @@ def train():
 
         epoch_train_loss /= ipe
         torch.cuda.empty_cache()
-        valid_psnr, valid_loss, cur_val_path = validate(model, valid_loader, valid_path, epoch)
+        valid_scores, cur_val_path = validate(model, valid_loader, valid_path, epoch)
         torch.cuda.empty_cache()
-        writer.add_scalar('PSNR', valid_psnr, epoch)
-        writer.add_scalar(f'{args.loss_type}/Train', epoch_train_loss, epoch)
-        writer.add_scalar(f'{args.loss_type}/Valid', valid_loss, epoch)
+        writer.add_scalar('PSNR', valid_scores['psnr'], epoch)
+        writer.add_scalar(f'Train', epoch_train_loss, epoch)
         if valid_psnr > best:
             best = valid_psnr
             ckpt = {'opt': optimizer.state_dict(), 'model': model.module.state_dict()}

@@ -7,7 +7,7 @@ from random import randint
 
 
 class Vimeo90k(data.Dataset):
-    def __init__(self, path, is_train=True):
+    def __init__(self, path, is_train=True, crop_size=None):
         super(Vimeo90k, self).__init__()
         train_list = os.path.join(path, 'tri_trainlist.txt')
         test_list = os.path.join(path, 'tri_testlist.txt')
@@ -21,6 +21,12 @@ class Vimeo90k(data.Dataset):
             triplet_list = triplet_list_file.readlines()
             triplet_list_file.close()
         self.triplet_list = triplet_list[:-1]
+        if crop_size is None:
+            self.crop_size = None
+        else:
+            if type(crop_size) is not tuple:
+                crop_size = (crop_size, crop_size)
+            self.crop_size = crop_size
 
     def __len__(self):
         return len(self.triplet_list)
@@ -57,6 +63,22 @@ class Vimeo90k(data.Dataset):
                 tmp = im1
                 im1 = im3
                 im3 = tmp
+                
+            if self.crop_size is not None:
+                # random crop
+                frame_w, frame_h = im1.size
+                crop_from_H = randint(0, frame_h - self.crop_size[1])
+                crop_from_W = randint(0, frame_w - self.crop_size[0])
+                im1 = im1.crop((crop_from_W, crop_from_H, crop_from_W + self.crop_size[0], crop_from_H + self.crop_size[1]))
+                im2 = im2.crop((crop_from_W, crop_from_H, crop_from_W + self.crop_size[0], crop_from_H + self.crop_size[1]))
+                im3 = im3.crop((crop_from_W, crop_from_H, crop_from_W + self.crop_size[0], crop_from_H + self.crop_size[1]))
+
+                # random rotate.
+                if self.crop_size[0] == self.crop_size[1]:
+                    angle = randint(0, 3)
+                    im1 = im1.rotate(90 * angle)
+                    im2 = im2.rotate(90 * angle)
+                    im3 = im3.rotate(90 * angle)
 
         im1 = to_tensor(im1)
         im2 = to_tensor(im2)
