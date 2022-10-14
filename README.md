@@ -7,6 +7,8 @@ The full model's weights pretrained on Vimeo90k data can be downloaded from this
 My reproduced model shows a ```PSNR of 35.59``` in Vimeo90k.
 -->
 
+UPDATE NOTE: the pretrained weights below should be used with the version commited on June 25, 2022. The current version could not perform well with the pretrained weights below. The weights for the current version of code will be shared in a near future.
+
 Pre-trained weights for pre-defined Z [using alpha](https://drive.google.com/file/d/1-pFZZu8Fc5AN9JdKGns1ht2gE0ugsRkf/view?usp=sharing).
 
 Pre-trained weights for fine-tuned Z [using a small neural network v](https://drive.google.com/file/d/1_x_3CxY1_f83spqHt5s-ZwsEtNCTULLy/view?usp=sharing).
