@@ -94,6 +94,12 @@ class SoftSplatBaseline(nn.Module):
         fr0, fr1 = x[:, :, 0], x[:, :, 1]
         flow = self.flow_predictor(torch.cat([fr0, fr1], dim=0), torch.cat([fr1, fr0], dim=0))
         fr0, fr1 = preprocess(fr0), preprocess(fr1)
+        
+        # preprocess via instance normalization
+        with torch.no_grad():
+            mean, std = x.view(x.shape[0], -1).mean(dim=1).view(x.shape[0], 1, 1, 1), x.view(x.shape[0], -1).std(dim=1).view(x.shape[0], 1, 1, 1)
+            fr0, fr1 = (fr0 - mean) / std, (fr1 - mean) / std
+
         f_lv = torch.cat([fr0, fr1], dim=0)
         pyramid = [f_lv]
         for feat_extractor_lv in self.feature_pyramid:
@@ -127,7 +133,7 @@ class SoftSplatBaseline(nn.Module):
             feat_lv = torch.cat([feat0_lv, feat1_lv], dim=1)
             concat_warped_feat_pyramid.append(feat_lv)
         output = self.synth_net(concat_warped_feat_pyramid)
-        return postprocess(output)
+        return (output * std) + mean  # rollback normalization
 
 
 if __name__ == '__main__':
