@@ -7,16 +7,6 @@ from torch.nn.functional import interpolate, grid_sample
 from einops import repeat
 
 
-# convert [0, 1] to [-1, 1]
-def preprocess(x):
-    return x * 2 - 1
-
-
-# convert [-1, 1] to [0, 1]
-def postprocess(x):
-    return torch.clamp((x + 1) / 2, 0, 1)
-
-
 class BackWarp(nn.Module):
     def __init__(self, clip=True):
         super(BackWarp, self).__init__()
@@ -93,7 +83,6 @@ class SoftSplatBaseline(nn.Module):
         target_t = target_t.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
         fr0, fr1 = x[:, :, 0], x[:, :, 1]
         flow = self.flow_predictor(torch.cat([fr0, fr1], dim=0), torch.cat([fr1, fr0], dim=0))
-        fr0, fr1 = preprocess(fr0), preprocess(fr1)
         
         # preprocess via instance normalization
         with torch.no_grad():
