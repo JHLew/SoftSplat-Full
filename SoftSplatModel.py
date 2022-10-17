@@ -3,6 +3,7 @@ import torch.nn as nn
 from OpticalFlow.PWCNet import PWCNet
 from softsplat import Softsplat
 from GridNet import GridNet
+from UNet import SmallUNet
 from torch.nn.functional import interpolate, grid_sample
 from einops import repeat
 
@@ -71,13 +72,7 @@ class SoftSplatBaseline(nn.Module):
         if predefined_z:
             self.alpha = nn.Parameter(-torch.ones(1))
         else:
-            self.v_net = nn.Sequential(
-                nn.Conv2d(6, 64, 3, 1, 1),
-                act(),
-                nn.Conv2d(64, 64, 3, 1, 1),
-                act(),
-                nn.Conv2d(64, 1, 3, 1, 1)
-            )
+            self.v_net = SmallUNet()
 
     def forward(self, x, target_t):
         target_t = target_t.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
@@ -86,7 +81,7 @@ class SoftSplatBaseline(nn.Module):
         
         # preprocess via instance normalization
         with torch.no_grad():
-            mean, std = x.view(x.shape[0], -1).mean(dim=1).view(x.shape[0], 1, 1, 1), x.view(x.shape[0], -1).std(dim=1).view(x.shape[0], 1, 1, 1)
+            mean, std = x.view(x.shape[0], 3, -1).mean(dim=-1).view(x.shape[0], 3, 1, 1), x.view(x.shape[0], 3, -1).std(dim=-1).view(x.shape[0], 3, 1, 1)
             fr0, fr1 = (fr0 - mean) / std, (fr1 - mean) / std
 
         f_lv = torch.cat([fr0, fr1], dim=0)
