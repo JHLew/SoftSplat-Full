@@ -31,9 +31,9 @@ class up(nn.Module):
         return x
 
 
-class UNet(nn.Module):
+class SmallUNet(nn.Module):
     def __init__(self, inChannels, outChannels, dim=32, act=nn.ReLU):
-        super(UNet, self).__init__()
+        super(SmallUNet, self).__init__()
         # Initialize neural network blocks.
         self.lvl0 = nn.Sequential(
             nn.Conv2d(inChannels, dim, 7, stride=1, padding=3),

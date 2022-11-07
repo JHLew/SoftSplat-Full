@@ -74,6 +74,13 @@ class SoftSplatBaseline(nn.Module):
         else:
             self.v_net = SmallUNet()
 
+    def instance_norm(self, x):
+        x0, x1 = x.chunk(2, dim=0)
+        x = torch.stack([x0, x1], dim=2)
+        mean, std = x.view(x.shape[0], x.shape[1], -1).mean(dim=-1).view(x.shape[0], x.shape[1], 1, 1), x.view(x.shape[0], x.shape[1], -1).std(dim=-1).view(x.shape[0], x.shape[1], 1, 1) + 1e-8
+        x0, x1 = (x0 - mean) / std, (x1 - mean) / std
+        return torch.cat([x0, x1], dim=0)
+
     def forward(self, x, target_t):
         target_t = target_t.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
         fr0, fr1 = x[:, :, 0], x[:, :, 1]
@@ -81,14 +88,14 @@ class SoftSplatBaseline(nn.Module):
         
         # preprocess via instance normalization
         with torch.no_grad():
-            mean, std = x.view(x.shape[0], 3, -1).mean(dim=-1).view(x.shape[0], 3, 1, 1), x.view(x.shape[0], 3, -1).std(dim=-1).view(x.shape[0], 3, 1, 1)
+            mean, std = x.view(x.shape[0], 3, -1).mean(dim=-1).view(x.shape[0], 3, 1, 1), x.view(x.shape[0], 3, -1).std(dim=-1).view(x.shape[0], 3, 1, 1) + 1e-8
             fr0, fr1 = (fr0 - mean) / std, (fr1 - mean) / std
 
         f_lv = torch.cat([fr0, fr1], dim=0)
         pyramid = [f_lv]
         for feat_extractor_lv in self.feature_pyramid:
             f_lv = feat_extractor_lv(f_lv)
-            pyramid.append(f_lv)
+            pyramid.append(self.instance_norm(f_lv))
 
         # Z importance metric
         brightness_diff = torch.abs(self.bwarp(torch.cat([fr1, fr0], dim=0), flow) - torch.cat([fr0, fr1], dim=0))
@@ -117,7 +124,10 @@ class SoftSplatBaseline(nn.Module):
             feat_lv = torch.cat([feat0_lv, feat1_lv], dim=1)
             concat_warped_feat_pyramid.append(feat_lv)
         output = self.synth_net(concat_warped_feat_pyramid)
-        return (output * std) + mean  # rollback normalization
+        output = (output * std) + mean  # rollback normalization
+        if not self.training:
+            output = torch.clamp(output, 0, 1)
+        return output
 
 
 if __name__ == '__main__':
